@@ -4,68 +4,55 @@ using UnityEngine;
 
 public class playerController : MonoBehaviour
 {
-    // Start is called before the first frame update
-    private CharacterController controller;
     private Rigidbody rb;
 
-    private Vector3 movement;
-    [SerializeField] private float walkSpeed, sprintSpeed, speed;
-    private bool grounded;
-    private Vector3 playerVelocity, direction, vertical;
-
+    private CapsuleCollider col;
+    [SerializeField]private LayerMask groundLayers;
+    private float speed;
     [SerializeField] private Transform camera;
-    private float turnSmoothTime = 0.1f;
-    float turnSmoothVelocity;
+    [SerializeField]private float walkSpeed, sprintSpeed, jumpSpeed, turnSmoothTime;
+    Vector3 movement, direction;
+    private float turnSmoothVelocity;
+    // Start is called before the first frame update    
     void Start()
     {
-        rb = gameObject.GetComponent<Rigidbody>();
-        controller = gameObject.GetComponent<CharacterController>();
-        
+        rb = GetComponent<Rigidbody>();
+        col = GetComponent<CapsuleCollider>();
+
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        if(!controller.isGrounded){
-            Debug.Log("graviting");
-            vertical += new Vector3(0, worldController.getGravity(),0);
-            //controller.Move(new Vector3(0,worldController.getGravity(),0));
+    void Update(){
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical = Input.GetAxisRaw("Vertical");
+        direction = new Vector3(horizontal, 0f, vertical).normalized;
+        if(Input.GetKey(KeyCode.Space) && IsGrounded()){
+            rb.AddForce(Vector3.up*jumpSpeed, ForceMode.Impulse);
         }
-        playerVelocity.x = Input.GetAxis("Horizontal") * speed;
-        playerVelocity.z = Input.GetAxis("Vertical") * speed;  
-
         if(Input.GetKey(KeyCode.LeftShift)){
             speed = sprintSpeed;
         }else{
             speed = walkSpeed;
         }
-        if(Input.GetKey(KeyCode.Space) && controller.isGrounded){
-            //playerVelocity.y += 0.1f;
-            vertical += new Vector3(0, 1,0);
-        }
-
-
-        direction = new Vector3(playerVelocity.x, 0 ,playerVelocity.z).normalized;
-        float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + camera.eulerAngles.y;
-        float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
-        
-
-        movement = Quaternion.Euler(0f,targetAngle,0f) * Vector3.forward;
         if(direction.magnitude >= 0.1f){
-            controller.transform.rotation = Quaternion.Euler(0f,targetAngle,0f);
-            controller.Move(movement*speed*Time.deltaTime + vertical);
+            rb.AddForce((movement.normalized*speed)- new Vector3(rb.velocity.x, 0f, rb.velocity.z), ForceMode.Force);
         }
+    }
+
+    // Update is called once per frame
+    void FixedUpdate()
+    {
         
-        /*if(direction.magnitude >= 0.1f){
+        if(direction.magnitude >= 0.1f){
             float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + camera.eulerAngles.y;
             float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
-            controller.transform.rotation = Quaternion.Euler(0f,targetAngle,0f);
+            rb.rotation = Quaternion.Euler(0f,angle,0f);
 
             movement = Quaternion.Euler(0f,targetAngle,0f) * Vector3.forward;
-            controller.Move(movement*speed*Time.deltaTime);
-        }*/
+        }
+        //rb.AddForce((direction.normalized*speed) - new Vector3(rb.velocity.x, 0f, rb.velocity.z), ForceMode.Force);
+    }
 
-        
-
+    private bool IsGrounded(){
+        return Physics.CheckCapsule(col.bounds.center, new Vector3(col.bounds.center.x,col.bounds.min.y, col.bounds.center.z), col.radius *0.9f, groundLayers);
     }
 }
